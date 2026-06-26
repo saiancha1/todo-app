@@ -43,6 +43,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+// Standardize error responses (incl. unhandled 500s) as RFC 7807 ProblemDetails,
+// which the frontend already knows how to parse.
+builder.Services.AddProblemDetails();
+
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
@@ -58,6 +62,9 @@ if (!app.Environment.IsEnvironment("Testing"))
 }
 
 // ---- Pipeline ----
+// Turns unhandled exceptions into ProblemDetails responses instead of leaking stack traces.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

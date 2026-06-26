@@ -36,31 +36,36 @@ export function DateTimePicker({ value, onChange }: DateTimePickerProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          aria-label="Due date"
-          className={cn("w-[220px] justify-start font-normal", !current && "text-muted-foreground")}
-        >
-          <CalendarIcon className="mr-2 size-4" />
-          {current ? format(current, "PP, p") : "No due date"}
-          {current && (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Clear due date"
-              onClick={(e) => {
-                e.stopPropagation();
-                commit(undefined, time);
-              }}
-              className="ml-auto rounded p-0.5 hover:bg-muted"
-            >
-              <XIcon className="size-3.5" />
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
+      {/* Trigger and clear are siblings — never nest interactive elements. */}
+      <div className="relative inline-flex">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="Due date"
+            className={cn(
+              "w-[220px] justify-start font-normal",
+              current && "pr-9",
+              !current && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="mr-2 size-4" />
+            {current ? format(current, "PP, p") : "No due date"}
+          </Button>
+        </PopoverTrigger>
+        {current && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Clear due date"
+            onClick={() => commit(undefined, time)}
+            className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
+          >
+            <XIcon className="size-3.5" />
+          </Button>
+        )}
+      </div>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar mode="single" selected={current} onSelect={(day) => commit(day, time)} autoFocus />
         <div className="border-t p-3">

@@ -23,10 +23,13 @@ public class TasksController : ControllerBase
     /// Every query is scoped to the authenticated user — the spine of ownership enforcement.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TaskResponse>>> GetAll([FromQuery] string filter = "all")
+    public async Task<ActionResult<IEnumerable<TaskResponse>>> GetAll(
+        [FromQuery] string filter = "all",
+        CancellationToken ct = default)
     {
         var userId = User.GetUserId();
-        var query = _db.Tasks.Where(t => t.UserId == userId);
+        // Read-only: no change tracking needed.
+        var query = _db.Tasks.AsNoTracking().Where(t => t.UserId == userId);
 
         query = filter.ToLowerInvariant() switch
         {
@@ -41,22 +44,22 @@ public class TasksController : ControllerBase
             .ThenBy(t => t.DueDate ?? DateTime.MaxValue)
             .ThenByDescending(t => t.CreatedAt)
             .Select(t => TaskResponse.From(t))
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return Ok(tasks);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<TaskResponse>> GetById(Guid id)
+    public async Task<ActionResult<TaskResponse>> GetById(Guid id, CancellationToken ct)
     {
-        var task = await FindOwnedAsync(id);
+        var task = await FindOwnedAsync(id, ct);
         return task is null ? NotFound() : Ok(TaskResponse.From(task));
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<TaskResponse>> Create(CreateTaskRequest request)
+    public async Task<ActionResult<TaskResponse>> Create(CreateTaskRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
             return ValidationProblem(TitleRequired());
@@ -71,7 +74,7 @@ public class TasksController : ControllerBase
         };
 
         _db.Tasks.Add(task);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return CreatedAtAction(nameof(GetById), new { id = task.Id }, TaskResponse.From(task));
     }
@@ -80,12 +83,12 @@ public class TasksController : ControllerBase
     [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TaskResponse>> Update(Guid id, UpdateTaskRequest request)
+    public async Task<ActionResult<TaskResponse>> Update(Guid id, UpdateTaskRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
             return ValidationProblem(TitleRequired());
 
-        var task = await FindOwnedAsync(id);
+        var task = await FindOwnedAsync(id, ct);
         if (task is null) return NotFound();
 
         task.Title = request.Title.Trim();
@@ -95,7 +98,7 @@ public class TasksController : ControllerBase
         task.DueDate = ToUtc(request.DueDate);
         task.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
         return Ok(TaskResponse.From(task));
     }
 
@@ -103,28 +106,28 @@ public class TasksController : ControllerBase
     [HttpPatch("{id:guid}/toggle")]
     [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TaskResponse>> Toggle(Guid id)
+    public async Task<ActionResult<TaskResponse>> Toggle(Guid id, CancellationToken ct)
     {
-        var task = await FindOwnedAsync(id);
+        var task = await FindOwnedAsync(id, ct);
         if (task is null) return NotFound();
 
         task.IsCompleted = !task.IsCompleted;
         task.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
         return Ok(TaskResponse.From(task));
     }
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var task = await FindOwnedAsync(id);
+        var task = await FindOwnedAsync(id, ct);
         if (task is null) return NotFound();
 
         _db.Tasks.Remove(task);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
         return NoContent();
     }
 
@@ -132,10 +135,10 @@ public class TasksController : ControllerBase
     /// Loads a task only if it belongs to the current user. Returning null (→ 404) for
     /// someone else's task means we never confirm another user's data even exists.
     /// </summary>
-    private async Task<TodoItem?> FindOwnedAsync(Guid id)
+    private async Task<TodoItem?> FindOwnedAsync(Guid id, CancellationToken ct)
     {
         var userId = User.GetUserId();
-        return await _db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        return await _db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, ct);
     }
 
     private static ModelStateDictionary TitleRequired()

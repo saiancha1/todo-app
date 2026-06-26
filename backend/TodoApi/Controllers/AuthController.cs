@@ -23,11 +23,11 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    public async Task<IActionResult> Register(RegisterRequest request, CancellationToken ct)
     {
         var email = request.Email.Trim().ToLowerInvariant();
 
-        if (await _db.Users.AnyAsync(u => u.Email == email))
+        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
             return Conflict(new { message = "An account with this email already exists." });
 
         var user = new User
@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
         };
 
         _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return Ok(BuildAuthResponse(user));
     }
@@ -45,10 +45,10 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login(LoginRequest request)
+    public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         var email = request.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
 
         // Same response whether the email is unknown or the password is wrong —
         // avoids leaking which accounts exist.
