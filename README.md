@@ -12,35 +12,46 @@ isolation, a Next.js frontend, and a lightweight MCP server. Every feature is wi
 
 ## Quick start
 
-You need the **.NET 10 SDK** and **Node 20+**. Run the backend and frontend in two terminals.
+You need the **.NET 10 SDK** and **Node 20+**.
 
-### 1. Backend (http://localhost:5080)
+### Run both with one command (recommended)
+
+From the repo root:
 
 ```bash
-cd backend
-dotnet run --project TodoApi --launch-profile http
+npm install              # installs the dev runner (concurrently)
+npm run setup            # installs frontend dependencies (first time only)
+npm run dev              # starts the API and frontend together
 ```
 
-On first run it creates and migrates a local SQLite database (`backend/TodoApi/todo.db`).
-The data persists across restarts. An interactive API explorer is available at
-http://localhost:5080/scalar/v1.
+`npm run dev` runs both processes with colored, prefixed output (`api` / `web`) and shuts them
+both down on `Ctrl+C`:
 
-### 2. Frontend (http://localhost:3000)
+- API → http://localhost:5080 (explorer at http://localhost:5080/scalar/v1)
+- Web → http://localhost:3000
+
+Open http://localhost:3000, create an account, and start adding tasks. On first run the API
+creates and migrates a local SQLite database (`backend/TodoApi/todo.db`) that persists across
+restarts.
+
+### Or run each separately
 
 ```bash
-cd frontend
-npm install
-npm run dev
+# Terminal 1 — backend (http://localhost:5080)
+dotnet run --project backend/TodoApi --launch-profile http
+
+# Terminal 2 — frontend (http://localhost:3000)
+npm --prefix frontend install
+npm --prefix frontend run dev
 ```
 
-Open http://localhost:3000, create an account, and start adding tasks. The frontend talks to the
-API at `http://localhost:5080` by default (override with `NEXT_PUBLIC_API_URL`).
+The frontend talks to the API at `http://localhost:5080` by default (override with
+`NEXT_PUBLIC_API_URL`).
 
-### 3. Tests
+### Tests
 
 ```bash
-cd backend
-dotnet test
+dotnet test backend
 ```
 
 ---
@@ -138,4 +149,5 @@ backend/
   TodoApi.Tests/    xUnit integration tests (ownership + validation)
 frontend/           Next.js 16 app (App Router)
 mcp/                MCP server exposing the API as agent tools
+package.json        root dev runner — `npm run dev` starts API + web together
 ```
