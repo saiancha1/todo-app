@@ -7,6 +7,14 @@ public enum TaskPriority
     High = 2
 }
 
+/// <summary>Workflow state of a task. Maps to the board columns.</summary>
+public enum TaskState
+{
+    Todo = 0,
+    InProgress = 1,
+    Done = 2
+}
+
 /// <summary>
 /// A single to-do task. Always belongs to exactly one <see cref="User"/>.
 /// Due dates are stored in UTC; the client renders them in local time.
@@ -19,7 +27,7 @@ public class TodoItem
 
     public string? Description { get; set; }
 
-    public bool IsCompleted { get; set; }
+    public TaskState Status { get; set; } = TaskState.Todo;
 
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
 

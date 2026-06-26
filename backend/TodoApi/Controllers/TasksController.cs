@@ -38,13 +38,13 @@ public class TasksController : ControllerBase
 
         query = filter.ToLowerInvariant() switch
         {
-            "active" => query.Where(t => !t.IsCompleted),
-            "completed" => query.Where(t => t.IsCompleted),
+            "active" => query.Where(t => t.Status != TaskState.Done),
+            "completed" => query.Where(t => t.Status == TaskState.Done),
             _ => query
         };
 
         var tasks = await query
-            .OrderBy(t => t.IsCompleted)
+            .OrderBy(t => t.Status)
             .ThenByDescending(t => t.Priority)
             .ThenBy(t => t.DueDate ?? DateTime.MaxValue)
             .ThenByDescending(t => t.CreatedAt)
@@ -74,6 +74,7 @@ public class TasksController : ControllerBase
             UserId = User.GetUserId(),
             Title = request.Title.Trim(),
             Description = request.Description?.Trim(),
+            Status = request.Status,
             Priority = request.Priority,
             DueDate = ToUtc(request.DueDate)
         };
@@ -99,7 +100,7 @@ public class TasksController : ControllerBase
 
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
-        task.IsCompleted = request.IsCompleted;
+        task.Status = request.Status;
         task.Priority = request.Priority;
         task.DueDate = ToUtc(request.DueDate);
         task.UpdatedAt = DateTime.UtcNow;
@@ -108,7 +109,23 @@ public class TasksController : ControllerBase
         return Ok(TaskResponse.From(task));
     }
 
-    /// <summary>Convenience endpoint for the most common mutation: flipping completion.</summary>
+    /// <summary>Set a task's workflow state directly (used by the board and the list status control).</summary>
+    [HttpPatch("{id:guid}/status")]
+    [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TaskResponse>> SetStatus(Guid id, UpdateStatusRequest request, CancellationToken ct)
+    {
+        var task = await FindOwnedAsync(id, ct);
+        if (task is null) return TaskNotFound(id);
+
+        task.Status = request.Status;
+        task.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(TaskResponse.From(task));
+    }
+
+    /// <summary>Convenience toggle between Done and Todo — used by the MCP server.</summary>
     [HttpPatch("{id:guid}/toggle")]
     [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -117,7 +134,7 @@ public class TasksController : ControllerBase
         var task = await FindOwnedAsync(id, ct);
         if (task is null) return TaskNotFound(id);
 
-        task.IsCompleted = !task.IsCompleted;
+        task.Status = task.Status == TaskState.Done ? TaskState.Todo : TaskState.Done;
         task.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);

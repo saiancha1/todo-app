@@ -19,22 +19,31 @@ public class TaskCrudTests : IClassFixture<TodoApiFactory>
         var created = await client.CreateTaskAsync("Write README", "explain setup");
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var task = await created.Content.ReadFromJsonAsync<TaskDto>();
-        Assert.False(task!.IsCompleted);
+        Assert.Equal(0, task!.Status); // Todo
+        Assert.False(task.IsCompleted);
 
         // List includes it
         var list = await client.GetFromJsonAsync<List<TaskDto>>("/api/tasks");
         Assert.Contains(list!, t => t.Id == task.Id);
 
-        // Toggle completion
+        // Move to In Progress via the status endpoint
+        var inProgress = await client.PatchAsJsonAsync($"/api/tasks/{task.Id}/status", new { status = 1 });
+        var afterStatus = await inProgress.Content.ReadFromJsonAsync<TaskDto>();
+        Assert.Equal(1, afterStatus!.Status); // InProgress
+        Assert.False(afterStatus.IsCompleted);
+
+        // Toggle completion (Todo/InProgress <-> Done)
         var toggled = await client.PatchAsync($"/api/tasks/{task.Id}/toggle", null);
         var afterToggle = await toggled.Content.ReadFromJsonAsync<TaskDto>();
-        Assert.True(afterToggle!.IsCompleted);
+        Assert.Equal(2, afterToggle!.Status); // Done
+        Assert.True(afterToggle.IsCompleted);
 
-        // Update
+        // Update (full edit, including status)
         var updated = await client.PutAsJsonAsync($"/api/tasks/{task.Id}",
-            new { title = "Write a great README", description = "with setup steps", isCompleted = false, priority = 2, dueDate = (DateTime?)null });
+            new { title = "Write a great README", description = "with setup steps", status = 0, priority = 2, dueDate = (DateTime?)null });
         var afterUpdate = await updated.Content.ReadFromJsonAsync<TaskDto>();
         Assert.Equal("Write a great README", afterUpdate!.Title);
+        Assert.Equal(0, afterUpdate.Status); // back to Todo
         Assert.Equal(2, afterUpdate.Priority);
 
         // Delete

@@ -6,7 +6,7 @@ namespace TodoApi.Tests;
 public record AuthResult(string Token, string Email, DateTime ExpiresAt);
 
 public record TaskDto(
-    Guid Id, string Title, string? Description, bool IsCompleted,
+    Guid Id, string Title, string? Description, int Status, bool IsCompleted,
     int Priority, DateTime? DueDate, DateTime CreatedAt, DateTime UpdatedAt);
 
 public static class ApiClientExtensions

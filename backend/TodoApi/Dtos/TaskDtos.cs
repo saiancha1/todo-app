@@ -8,20 +8,24 @@ public record CreateTaskRequest(
     string Title,
     [MaxLength(2000)] string? Description,
     TaskPriority Priority = TaskPriority.Medium,
-    DateTime? DueDate = null);
+    DateTime? DueDate = null,
+    TaskState Status = TaskState.Todo);
 
 public record UpdateTaskRequest(
     [Required(AllowEmptyStrings = false, ErrorMessage = "Title is required."), MaxLength(200)]
     string Title,
     [MaxLength(2000)] string? Description,
-    bool IsCompleted,
+    TaskState Status,
     TaskPriority Priority,
     DateTime? DueDate);
+
+public record UpdateStatusRequest(TaskState Status);
 
 public record TaskResponse(
     Guid Id,
     string Title,
     string? Description,
+    TaskState Status,
     bool IsCompleted,
     TaskPriority Priority,
     DateTime? DueDate,
@@ -29,5 +33,6 @@ public record TaskResponse(
     DateTime UpdatedAt)
 {
     public static TaskResponse From(TodoItem t) => new(
-        t.Id, t.Title, t.Description, t.IsCompleted, t.Priority, t.DueDate, t.CreatedAt, t.UpdatedAt);
+        t.Id, t.Title, t.Description, t.Status, t.Status == TaskState.Done,
+        t.Priority, t.DueDate, t.CreatedAt, t.UpdatedAt);
 }

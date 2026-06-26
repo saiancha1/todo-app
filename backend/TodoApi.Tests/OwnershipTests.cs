@@ -38,7 +38,7 @@ public class OwnershipTests : IClassFixture<TodoApiFactory>
         var task = await created.Content.ReadFromJsonAsync<TaskDto>();
 
         var response = await bob.PutAsJsonAsync($"/api/tasks/{task!.Id}",
-            new { title = "Hijacked", description = (string?)null, isCompleted = true, priority = 2, dueDate = (DateTime?)null });
+            new { title = "Hijacked", description = (string?)null, status = 2, priority = 2, dueDate = (DateTime?)null });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
