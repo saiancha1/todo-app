@@ -50,13 +50,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "Cannot reach the server. Is the API running?");
   }
 
-  if (res.status === 401) {
-    // Token missing/expired — clear it so the UI can redirect to login.
-    tokenStore.clear();
-    throw new ApiError(401, "Your session has expired. Please sign in again.");
-  }
-
   if (!res.ok) {
+    // A 401 on a request we authenticated means the session is no longer valid —
+    // clear it so the UI redirects to login. A 401 without a token is the login
+    // endpoint rejecting credentials, so we surface its real message instead.
+    if (res.status === 401 && token) {
+      tokenStore.clear();
+      throw new ApiError(401, "Your session has expired. Please sign in again.");
+    }
+
     const { message, fieldErrors } = await parseError(res);
     throw new ApiError(res.status, message, fieldErrors);
   }
