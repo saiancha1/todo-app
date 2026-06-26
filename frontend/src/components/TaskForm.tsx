@@ -2,18 +2,31 @@
 
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import { localInputToUtcIso } from "@/lib/format";
 import { CreateTaskInput, Priority, priorityLabels } from "@/lib/types";
+import { DateTimePicker } from "@/components/DateTimePicker";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TaskFormProps {
   onCreate: (input: CreateTaskInput) => Promise<void>;
 }
 
+const priorityOptions = [Priority.Low, Priority.Medium, Priority.High];
+
 export default function TaskForm({ onCreate }: TaskFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>(Priority.Medium);
-  const [due, setDue] = useState("");
+  const [due, setDue] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,13 +45,13 @@ export default function TaskForm({ onCreate }: TaskFormProps) {
         title: title.trim(),
         description: description.trim() || null,
         priority,
-        dueDate: localInputToUtcIso(due),
+        dueDate: due,
       });
       // Success — clear the form for the next entry.
       setTitle("");
       setDescription("");
       setPriority(Priority.Medium);
-      setDue("");
+      setDue(null);
     } catch (err) {
       // Keep the user's input; just surface the error.
       setError(err instanceof ApiError ? err.message : "Could not add task. Please try again.");
@@ -48,63 +61,49 @@ export default function TaskForm({ onCreate }: TaskFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3">
-        <input
-          aria-label="Task title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="What needs doing?"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
-        />
-        <textarea
-          aria-label="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Notes (optional)"
-          rows={2}
-          className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
-        />
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="text-sm text-slate-600">
-            Priority
-            <select
-              value={priority}
-              onChange={(e) => setPriority(Number(e.target.value) as Priority)}
-              className="ml-2 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
-            >
-              {Object.values(Priority)
-                .filter((v): v is Priority => typeof v === "number")
-                .map((p) => (
-                  <option key={p} value={p}>
+    <Card>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <Input
+            aria-label="Task title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What needs doing?"
+          />
+          <Textarea
+            aria-label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Notes (optional)"
+            rows={2}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={String(priority)} onValueChange={(v) => setPriority(Number(v) as Priority)}>
+              <SelectTrigger className="w-[140px]" aria-label="Priority">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {priorityOptions.map((p) => (
+                  <SelectItem key={p} value={String(p)}>
                     {priorityLabels[p]}
-                  </option>
+                  </SelectItem>
                 ))}
-            </select>
-          </label>
-          <label className="text-sm text-slate-600">
-            Due
-            <input
-              type="datetime-local"
-              value={due}
-              onChange={(e) => setDue(e.target.value)}
-              className="ml-2 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="ml-auto rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
-          >
-            {submitting ? "Adding…" : "Add task"}
-          </button>
-        </div>
-        {error && (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-      </div>
-    </form>
+              </SelectContent>
+            </Select>
+
+            <DateTimePicker value={due} onChange={setDue} />
+
+            <Button type="submit" disabled={submitting} className="ml-auto">
+              {submitting ? "Adding…" : "Add task"}
+            </Button>
+          </div>
+          {error && (
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }

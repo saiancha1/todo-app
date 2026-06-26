@@ -13,5 +13,5 @@ export default function Home() {
     router.replace(isAuthenticated ? "/tasks" : "/login");
   }, [initializing, isAuthenticated, router]);
 
-  return <div className="flex flex-1 items-center justify-center text-slate-400">Loading…</div>;
+  return <div className="flex flex-1 items-center justify-center text-muted-foreground">Loading…</div>;
 }

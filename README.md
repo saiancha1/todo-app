@@ -5,7 +5,7 @@ isolation, a Next.js frontend, and a lightweight MCP server. Every feature is wi
 — what the backend supports, the UI exposes, and the other way around.
 
 - **Backend:** ASP.NET Core 10 Web API, EF Core + SQLite, JWT auth, xUnit tests
-- **Frontend:** Next.js 16 (App Router, TypeScript, Tailwind)
+- **Frontend:** Next.js 16 (App Router, TypeScript), [shadcn/ui](https://ui.shadcn.com) components on Tailwind
 - **MCP:** a small Model Context Protocol server exposing the API as agent tools (see [`mcp/`](mcp/README.md))
 
 ---
@@ -62,7 +62,9 @@ explicit tests (`OwnershipTests`).
 - Toggle complete — one click.
 - Delete — with per-row error feedback.
 
-All list mutations update the UI **immediately, with no page refresh**.
+The UI is built with **shadcn/ui** components (accessible Radix primitives on Tailwind), including
+a calendar + time picker for due dates and toast feedback for action failures. All list mutations
+update the UI **immediately, with no page refresh**.
 
 **Validation.** Blank/whitespace titles, invalid emails, short passwords, and duplicate
 registrations are all rejected with a `400`/`409` and a user-facing message — never accepted

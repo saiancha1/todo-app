@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import EditTaskDialog from "@/components/EditTaskDialog";
 import TaskForm from "@/components/TaskForm";
 import TaskItem from "@/components/TaskItem";
+import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CreateTaskInput, Task, TaskFilter, UpdateTaskInput } from "@/lib/types";
@@ -62,33 +63,26 @@ export default function TasksPage() {
     [filter],
   );
 
+  const matchesFilter = useCallback(
+    (t: Task) =>
+      filter === "active" ? !t.isCompleted : filter === "completed" ? t.isCompleted : true,
+    [filter],
+  );
+
   const handleToggle = useCallback(
     async (task: Task) => {
       const updated = await api.toggleTask(task.id);
-      setTasks((prev) =>
-        prev
-          .map((t) => (t.id === updated.id ? updated : t))
-          // Drop it from the list if it no longer matches the active filter.
-          .filter((t) =>
-            filter === "active" ? !t.isCompleted : filter === "completed" ? t.isCompleted : true,
-          ),
-      );
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)).filter(matchesFilter));
     },
-    [filter],
+    [matchesFilter],
   );
 
   const handleUpdate = useCallback(
     async (id: string, input: UpdateTaskInput) => {
       const updated = await api.updateTask(id, input);
-      setTasks((prev) =>
-        prev
-          .map((t) => (t.id === updated.id ? updated : t))
-          .filter((t) =>
-            filter === "active" ? !t.isCompleted : filter === "completed" ? t.isCompleted : true,
-          ),
-      );
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)).filter(matchesFilter));
     },
-    [filter],
+    [matchesFilter],
   );
 
   const handleDelete = useCallback(async (task: Task) => {
@@ -97,25 +91,26 @@ export default function TasksPage() {
   }, []);
 
   if (initializing || !isAuthenticated) {
-    return <div className="flex flex-1 items-center justify-center text-slate-400">Loading…</div>;
+    return <div className="flex flex-1 items-center justify-center text-muted-foreground">Loading…</div>;
   }
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="border-b bg-background">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-semibold text-slate-900">Tasks</h1>
-          <div className="flex items-center gap-3 text-sm text-slate-500">
+          <h1 className="text-lg font-semibold">Tasks</h1>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="hidden sm:inline">{email}</span>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 logout();
                 router.replace("/login");
               }}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
             >
               Sign out
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -125,32 +120,29 @@ export default function TasksPage() {
 
         <div className="mt-6 flex gap-1">
           {filters.map((f) => (
-            <button
+            <Button
               key={f.key}
+              variant={filter === f.key ? "default" : "ghost"}
+              size="sm"
               onClick={() => setFilter(f.key)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                filter === f.key
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
             >
               {f.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         <section className="mt-4">
           {loading ? (
-            <p className="py-12 text-center text-sm text-slate-400">Loading tasks…</p>
+            <p className="py-12 text-center text-sm text-muted-foreground">Loading tasks…</p>
           ) : error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
               {error}{" "}
               <button onClick={loadTasks} className="font-medium underline underline-offset-2">
                 Retry
               </button>
             </div>
           ) : tasks.length === 0 ? (
-            <p className="py-12 text-center text-sm text-slate-400">
+            <p className="py-12 text-center text-sm text-muted-foreground">
               {filter === "all" ? "No tasks yet. Add your first one above." : `No ${filter} tasks.`}
             </p>
           ) : (
