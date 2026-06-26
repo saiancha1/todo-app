@@ -17,6 +17,7 @@ obj/
 node_modules/
 .next/
 out/
+dist/
 .turbo/
 npm-debug.log*
 yarn-error.log*

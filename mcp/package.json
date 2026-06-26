@@ -1,0 +1,23 @@
+{
+  "name": "todo-mcp",
+  "version": "1.0.0",
+  "description": "A lightweight MCP server that exposes the Todo API as tools for AI agents.",
+  "type": "module",
+  "bin": {
+    "todo-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
