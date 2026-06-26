@@ -69,6 +69,8 @@ explicit tests (`OwnershipTests`).
 - Create — form validates the title, clears on success, and **keeps your input if the server
   rejects it**.
 - List — with All / Active / Completed filters.
+- **Board** — a Trello-style two-column view (To Do / Completed); drag a card between
+  columns to flip its status, or use the checkbox. The chosen view is remembered.
 - Edit — a dialog **pre-populated with the task's current values**.
 - Toggle complete — one click.
 - Delete — with per-row error feedback.
