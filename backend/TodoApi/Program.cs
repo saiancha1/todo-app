@@ -38,6 +38,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+
+        // A signature-valid token can still reference a user that no longer exists
+        // (e.g. account deleted, or the database was reset). Reject it here with a clean
+        // 401 instead of letting a downstream foreign-key violation surface as a 500.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                if (context.Principal is null || !context.Principal.TryGetUserId(out var userId))
+                {
+                    context.Fail("Token is missing a valid user id.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                if (!await db.Users.AnyAsync(u => u.Id == userId))
+                    context.Fail("The account for this token no longer exists.");
+            }
+        };
     });
 
 builder.Services.AddAuthorization();

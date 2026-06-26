@@ -10,12 +10,16 @@ public static class ClaimsPrincipalExtensions
     /// Throws if the principal is unauthenticated — callers are always behind [Authorize].
     /// </summary>
     public static Guid GetUserId(this ClaimsPrincipal principal)
+        => principal.TryGetUserId(out var id)
+            ? id
+            : throw new InvalidOperationException("Authenticated principal is missing a valid user id.");
+
+    /// <summary>Non-throwing variant for use during authentication, before [Authorize] runs.</summary>
+    public static bool TryGetUserId(this ClaimsPrincipal principal, out Guid id)
     {
         var sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
                   ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        return Guid.TryParse(sub, out var id)
-            ? id
-            : throw new InvalidOperationException("Authenticated principal is missing a valid user id.");
+        return Guid.TryParse(sub, out id);
     }
 }
