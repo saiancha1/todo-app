@@ -13,11 +13,13 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly JwtTokenService _jwt;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AppDbContext db, JwtTokenService jwt)
+    public AuthController(AppDbContext db, JwtTokenService jwt, ILogger<AuthController> logger)
     {
         _db = db;
         _jwt = jwt;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -28,7 +30,10 @@ public class AuthController : ControllerBase
         var email = request.Email.Trim().ToLowerInvariant();
 
         if (await _db.Users.AnyAsync(u => u.Email == email, ct))
+        {
+            _logger.LogWarning("Registration rejected: email {Email} already registered", email);
             return Conflict(new { message = "An account with this email already exists." });
+        }
 
         var user = new User
         {
@@ -39,6 +44,7 @@ public class AuthController : ControllerBase
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogInformation("New account registered: {Email} ({UserId})", email, user.Id);
         return Ok(BuildAuthResponse(user));
     }
 
@@ -53,8 +59,12 @@ public class AuthController : ControllerBase
         // Same response whether the email is unknown or the password is wrong —
         // avoids leaking which accounts exist.
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            _logger.LogWarning("Failed login attempt for {Email}", email);
             return Unauthorized(new { message = "Invalid email or password." });
+        }
 
+        _logger.LogInformation("User {UserId} signed in", user.Id);
         return Ok(BuildAuthResponse(user));
     }
 

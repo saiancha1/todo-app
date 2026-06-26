@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -47,6 +48,17 @@ builder.Services.AddOpenApi();
 // which the frontend already knows how to parse.
 builder.Services.AddProblemDetails();
 
+// One concise log line per request (method, path, status, duration) so a reported
+// issue can be traced to the endpoint that handled it.
+builder.Services.AddHttpLogging(options =>
+{
+    options.LoggingFields = HttpLoggingFields.RequestMethod
+        | HttpLoggingFields.RequestPath
+        | HttpLoggingFields.ResponseStatusCode
+        | HttpLoggingFields.Duration;
+    options.CombineLogs = true;
+});
+
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
@@ -65,6 +77,8 @@ if (!app.Environment.IsEnvironment("Testing"))
 // Turns unhandled exceptions into ProblemDetails responses instead of leaking stack traces.
 app.UseExceptionHandler();
 
+app.UseHttpLogging();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -73,6 +87,26 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseAuthentication();
+
+// Attach the authenticated user's id to the logging scope so every log line emitted
+// while handling the request is tagged with who made it.
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        // Message-template scope so it renders as "UserId:<id>" in the console and stays
+        // structured ({UserId}) for JSON/aggregated sinks.
+        using (logger.BeginScope("UserId:{UserId}", context.User.GetUserId()))
+        {
+            await next();
+            return;
+        }
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 app.MapControllers();
 

@@ -15,8 +15,13 @@ namespace TodoApi.Controllers;
 public class TasksController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<TasksController> _logger;
 
-    public TasksController(AppDbContext db) => _db = db;
+    public TasksController(AppDbContext db, ILogger<TasksController> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     /// <summary>
     /// Lists the current user's tasks. Optional filter: all | active | completed.
@@ -53,7 +58,7 @@ public class TasksController : ControllerBase
     public async Task<ActionResult<TaskResponse>> GetById(Guid id, CancellationToken ct)
     {
         var task = await FindOwnedAsync(id, ct);
-        return task is null ? NotFound() : Ok(TaskResponse.From(task));
+        return task is null ? TaskNotFound(id) : Ok(TaskResponse.From(task));
     }
 
     [HttpPost]
@@ -76,6 +81,7 @@ public class TasksController : ControllerBase
         _db.Tasks.Add(task);
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogInformation("Task {TaskId} created", task.Id);
         return CreatedAtAction(nameof(GetById), new { id = task.Id }, TaskResponse.From(task));
     }
 
@@ -89,7 +95,7 @@ public class TasksController : ControllerBase
             return ValidationProblem(TitleRequired());
 
         var task = await FindOwnedAsync(id, ct);
-        if (task is null) return NotFound();
+        if (task is null) return TaskNotFound(id);
 
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
@@ -109,7 +115,7 @@ public class TasksController : ControllerBase
     public async Task<ActionResult<TaskResponse>> Toggle(Guid id, CancellationToken ct)
     {
         var task = await FindOwnedAsync(id, ct);
-        if (task is null) return NotFound();
+        if (task is null) return TaskNotFound(id);
 
         task.IsCompleted = !task.IsCompleted;
         task.UpdatedAt = DateTime.UtcNow;
@@ -124,10 +130,12 @@ public class TasksController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var task = await FindOwnedAsync(id, ct);
-        if (task is null) return NotFound();
+        if (task is null) return TaskNotFound(id);
 
         _db.Tasks.Remove(task);
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Task {TaskId} deleted", id);
         return NoContent();
     }
 
@@ -139,6 +147,16 @@ public class TasksController : ControllerBase
     {
         var userId = User.GetUserId();
         return await _db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, ct);
+    }
+
+    /// <summary>
+    /// 404 for a missing or non-owned task. Logged at Warning (with the user id from the
+    /// request's log scope) so cross-user access attempts and "my task vanished" reports are visible.
+    /// </summary>
+    private NotFoundResult TaskNotFound(Guid id)
+    {
+        _logger.LogWarning("Task {TaskId} not found or not owned by the requesting user", id);
+        return NotFound();
     }
 
     private static ModelStateDictionary TitleRequired()

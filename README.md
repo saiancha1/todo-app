@@ -87,6 +87,13 @@ silently.
 `Z`) and rendered in the viewer's local timezone. A value converter in the `DbContext` guarantees
 SQLite reads come back as UTC, which is the subtle bug this design avoids.
 
+**Logging.** A lightweight diagnostic baseline: one request line per call (method, path, status,
+duration), an authenticated **user id attached to the log scope** of every request, and
+application events at sensible levels — failed logins and not-found/not-owned task access at
+`Warning`, registrations and task create/delete at `Information`. Unhandled exceptions are logged
+with full context by the exception handler. Enough to investigate a reported issue from the logs;
+metrics/tracing/aggregation are noted under "another day".
+
 **MCP server.** `list_tasks`, `create_task`, `complete_task`, `delete_task` — reusing the same
 endpoints and authorization. See [`mcp/README.md`](mcp/README.md).
 
@@ -126,7 +133,9 @@ These were conscious scope decisions, not omissions I'm hiding:
 - **Pagination.** The task list is unbounded. Trivial for a personal to-do list, necessary at
   scale.
 - **Rate limiting on auth endpoints.** Would add before exposing login publicly.
-- **CI/CD, Docker, observability.** Out of scope for this exercise per the brief.
+- **Full observability** (metrics, distributed tracing, log aggregation to Seq/CloudWatch).
+  There's a lightweight logging baseline (see above) — console output, structured, with user-id
+  scopes — but no metrics or external sink. CI/CD and Docker are likewise out of scope per the brief.
 
 ---
 
@@ -140,6 +149,8 @@ These were conscious scope decisions, not omissions I'm hiding:
 - **Rate limiting** and account-lockout on auth.
 - **Frontend tests** (component + a Playwright happy-path) to match the backend's test coverage.
 - **Optimistic UI with rollback** for instant feedback even on slow networks.
+- **Observability** — ship structured logs to an aggregator (Seq/CloudWatch), add request
+  metrics and distributed tracing, and wire frontend error reporting.
 
 ---
 
