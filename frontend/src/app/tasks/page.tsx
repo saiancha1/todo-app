@@ -10,7 +10,7 @@ import TaskItem from "@/components/TaskItem";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { CreateTaskInput, Task, TaskFilter, UpdateTaskInput } from "@/lib/types";
+import { CreateTaskInput, Status, Task, TaskFilter, UpdateTaskInput } from "@/lib/types";
 
 type View = "list" | "board";
 
@@ -77,8 +77,8 @@ export default function TasksPage() {
     setTasks((prev) => [created, ...prev]);
   }, []);
 
-  const handleToggle = useCallback(async (task: Task) => {
-    const updated = await api.toggleTask(task.id);
+  const handleSetStatus = useCallback(async (task: Task, status: Status) => {
+    const updated = await api.setStatus(task.id, status);
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
   }, []);
 
@@ -95,7 +95,11 @@ export default function TasksPage() {
   const listTasks = useMemo(
     () =>
       tasks.filter((t) =>
-        filter === "active" ? !t.isCompleted : filter === "completed" ? t.isCompleted : true,
+        filter === "active"
+          ? t.status !== Status.Done
+          : filter === "completed"
+            ? t.status === Status.Done
+            : true,
       ),
     [tasks, filter],
   );
@@ -182,7 +186,7 @@ export default function TasksPage() {
               No tasks yet. Add your first one above.
             </p>
           ) : view === "board" ? (
-            <Board tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onEdit={setEditing} />
+            <Board tasks={tasks} onSetStatus={handleSetStatus} onDelete={handleDelete} onEdit={setEditing} />
           ) : listTasks.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">No {filter} tasks.</p>
           ) : (
@@ -191,7 +195,7 @@ export default function TasksPage() {
                 <TaskItem
                   key={task.id}
                   task={task}
-                  onToggle={handleToggle}
+                  onSetStatus={handleSetStatus}
                   onDelete={handleDelete}
                   onEdit={setEditing}
                 />

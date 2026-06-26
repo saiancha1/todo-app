@@ -3,16 +3,16 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { StatusSelect } from "@/components/StatusSelect";
 import { formatDueDate, isOverdue } from "@/lib/format";
-import { Priority, priorityLabels, Task } from "@/lib/types";
+import { Priority, priorityLabels, Status, Task } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface TaskItemProps {
   task: Task;
-  onToggle: (task: Task) => Promise<void>;
+  onSetStatus: (task: Task, status: Status) => Promise<void>;
   onDelete: (task: Task) => Promise<void>;
   onEdit: (task: Task) => void;
 }
@@ -23,7 +23,7 @@ const priorityVariant: Record<Priority, "secondary" | "default" | "destructive">
   [Priority.High]: "destructive",
 };
 
-export default function TaskItem({ task, onToggle, onDelete, onEdit }: TaskItemProps) {
+export default function TaskItem({ task, onSetStatus, onDelete, onEdit }: TaskItemProps) {
   const [busy, setBusy] = useState(false);
 
   async function run(action: () => Promise<void>, failureMessage: string) {
@@ -38,29 +38,25 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit }: TaskItemP
   }
 
   const due = formatDueDate(task.dueDate);
-  const overdue = !task.isCompleted && isOverdue(task.dueDate);
+  const done = task.status === Status.Done;
+  const overdue = !done && isOverdue(task.dueDate);
 
   return (
     <Card className="p-4">
       <div className="flex items-start gap-3">
-        <Checkbox
-          checked={task.isCompleted}
+        <StatusSelect
+          value={task.status}
           disabled={busy}
-          onCheckedChange={() => run(() => onToggle(task), "Could not update the task.")}
-          aria-label={task.isCompleted ? "Mark as not done" : "Mark as done"}
-          className="mt-1"
+          onChange={(s) => run(() => onSetStatus(task, s), "Could not update the task.")}
+          className="w-[130px] shrink-0"
         />
 
         <div className="min-w-0 flex-1">
-          <p
-            className={`break-words font-medium ${
-              task.isCompleted ? "text-muted-foreground line-through" : "text-foreground"
-            }`}
-          >
+          <p className={`break-words font-medium ${done ? "text-muted-foreground line-through" : "text-foreground"}`}>
             {task.title}
           </p>
           {task.description && (
-            <p className={`mt-0.5 break-words text-sm ${task.isCompleted ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+            <p className={`mt-0.5 break-words text-sm ${done ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
               {task.description}
             </p>
           )}

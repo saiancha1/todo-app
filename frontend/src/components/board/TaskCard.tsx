@@ -7,13 +7,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { formatDueDate, isOverdue } from "@/lib/format";
-import { Priority, priorityLabels, Task } from "@/lib/types";
+import { Priority, priorityLabels, Status, Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export interface TaskCardActions {
-  onToggle: (task: Task) => Promise<void>;
   onDelete: (task: Task) => Promise<void>;
   onEdit: (task: Task) => void;
 }
@@ -27,26 +25,26 @@ const priorityVariant: Record<Priority, "secondary" | "default" | "destructive">
 /** Presentational card — used both in a column and inside the drag overlay. */
 export function TaskCardContent({
   task,
-  onToggle,
   onDelete,
   onEdit,
   dragging,
 }: { task: Task; dragging?: boolean } & TaskCardActions) {
   const [busy, setBusy] = useState(false);
 
-  async function run(action: () => Promise<void>, failureMessage: string) {
+  async function handleDelete() {
     setBusy(true);
     try {
-      await action();
+      await onDelete(task);
     } catch {
-      toast.error(failureMessage);
+      toast.error("Could not delete the task.");
     } finally {
       setBusy(false);
     }
   }
 
   const due = formatDueDate(task.dueDate);
-  const overdue = !task.isCompleted && isOverdue(task.dueDate);
+  const done = task.status === Status.Done;
+  const overdue = !done && isOverdue(task.dueDate);
   // Stop pointer events on interactive controls from starting a drag.
   const noDrag = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation() };
 
@@ -54,21 +52,8 @@ export function TaskCardContent({
     <Card className={cn("gap-0 p-3 shadow-sm", dragging && "ring-2 ring-ring")}>
       <div className="flex items-start gap-2">
         <GripVertical className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" aria-hidden />
-        <Checkbox
-          checked={task.isCompleted}
-          disabled={busy}
-          onCheckedChange={() => run(() => onToggle(task), "Could not update the task.")}
-          aria-label={task.isCompleted ? "Mark as not done" : "Mark as done"}
-          className="mt-0.5"
-          {...noDrag}
-        />
         <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "break-words text-sm font-medium",
-              task.isCompleted ? "text-muted-foreground line-through" : "text-foreground",
-            )}
-          >
+          <p className={cn("break-words text-sm font-medium", done ? "text-muted-foreground line-through" : "text-foreground")}>
             {task.title}
           </p>
           {task.description && (
@@ -95,7 +80,7 @@ export function TaskCardContent({
             size="icon"
             className="size-7 text-destructive hover:text-destructive"
             disabled={busy}
-            onClick={() => run(() => onDelete(task), "Could not delete the task.")}
+            onClick={handleDelete}
             aria-label="Delete task"
             {...noDrag}
           >

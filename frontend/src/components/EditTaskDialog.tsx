@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import { Priority, priorityLabels, Task, UpdateTaskInput } from "@/lib/types";
+import { Priority, priorityLabels, Status, Task, UpdateTaskInput } from "@/lib/types";
 import { DateTimePicker } from "@/components/DateTimePicker";
+import { StatusSelect } from "@/components/StatusSelect";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,7 @@ export default function EditTaskDialog({ task, onSave, onClose }: EditTaskDialog
   const [description, setDescription] = useState(task.description ?? "");
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [due, setDue] = useState<string | null>(task.dueDate);
-  const [isCompleted, setIsCompleted] = useState(task.isCompleted);
+  const [status, setStatus] = useState<Status>(task.status);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,7 +58,7 @@ export default function EditTaskDialog({ task, onSave, onClose }: EditTaskDialog
         description: description.trim() || null,
         priority,
         dueDate: due,
-        isCompleted,
+        status,
       });
       onClose();
     } catch (err) {
@@ -114,10 +114,10 @@ export default function EditTaskDialog({ task, onSave, onClose }: EditTaskDialog
             <DateTimePicker value={due} onChange={setDue} />
           </div>
 
-          <Label className="flex items-center gap-2 font-normal">
-            <Checkbox checked={isCompleted} onCheckedChange={(c) => setIsCompleted(c === true)} />
-            Completed
-          </Label>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <StatusSelect value={status} onChange={setStatus} className="w-[160px]" />
+          </div>
 
           {error && (
             <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -1,6 +1,7 @@
 import {
   AuthResponse,
   CreateTaskInput,
+  Status,
   Task,
   TaskFilter,
   UpdateTaskInput,
@@ -102,7 +103,8 @@ export const api = {
   updateTask: (id: string, input: UpdateTaskInput) =>
     request<Task>(`/api/tasks/${id}`, { method: "PUT", body: JSON.stringify(input) }),
 
-  toggleTask: (id: string) => request<Task>(`/api/tasks/${id}/toggle`, { method: "PATCH" }),
+  setStatus: (id: string, status: Status) =>
+    request<Task>(`/api/tasks/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
   deleteTask: (id: string) => request<void>(`/api/tasks/${id}`, { method: "DELETE" }),
 };

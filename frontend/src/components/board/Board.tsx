@@ -14,32 +14,35 @@ import {
 import { useMemo, useState } from "react";
 import BoardColumn from "@/components/board/BoardColumn";
 import { TaskCardActions, TaskCardContent } from "@/components/board/TaskCard";
-import { Task } from "@/lib/types";
+import { Status, statusOrder, Task } from "@/lib/types";
 
 interface BoardProps extends TaskCardActions {
   tasks: Task[];
+  onSetStatus: (task: Task, status: Status) => Promise<void>;
 }
 
 /**
- * Two-column kanban: "To Do" and "Completed". Dragging a card to the other
- * column flips its completion via the same toggle used elsewhere.
+ * Three-column kanban: To Do / In Progress / Done. Dragging a card to another
+ * column sets that status via the same call the list view's status control uses.
  */
-export default function Board({ tasks, ...actions }: BoardProps) {
+export default function Board({ tasks, onSetStatus, ...actions }: BoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    // A small drag threshold lets clicks on the checkbox / buttons through.
+    // A small drag threshold lets clicks on the buttons through.
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
 
-  const { todo, done } = useMemo(
-    () => ({
-      todo: tasks.filter((t) => !t.isCompleted),
-      done: tasks.filter((t) => t.isCompleted),
-    }),
-    [tasks],
-  );
+  const byStatus = useMemo(() => {
+    const groups: Record<Status, Task[]> = {
+      [Status.Todo]: [],
+      [Status.InProgress]: [],
+      [Status.Done]: [],
+    };
+    for (const task of tasks) groups[task.status].push(task);
+    return groups;
+  }, [tasks]);
 
   const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
 
@@ -55,10 +58,9 @@ export default function Board({ tasks, ...actions }: BoardProps) {
     const task = tasks.find((t) => t.id === active.id);
     if (!task) return;
 
-    const targetCompleted = over.id === "done";
-    if (task.isCompleted !== targetCompleted) {
-      // Same toggle the checkbox uses — errors are surfaced there via toast.
-      void actions.onToggle(task);
+    const targetStatus = Number(over.id) as Status;
+    if (task.status !== targetStatus) {
+      void onSetStatus(task, targetStatus);
     }
   }
 
@@ -70,14 +72,15 @@ export default function Board({ tasks, ...actions }: BoardProps) {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <BoardColumn id="todo" title="To Do" tasks={todo} {...actions} />
-        <BoardColumn id="done" title="Completed" tasks={done} {...actions} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {statusOrder.map((status) => (
+          <BoardColumn key={status} status={status} tasks={byStatus[status]} {...actions} />
+        ))}
       </div>
 
       <DragOverlay>
         {activeTask ? (
-          <div className="w-80 max-w-[90vw] cursor-grabbing">
+          <div className="w-72 max-w-[90vw] cursor-grabbing">
             <TaskCardContent task={activeTask} {...actions} dragging />
           </div>
         ) : null}
